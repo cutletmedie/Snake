@@ -2,11 +2,14 @@ import copy
 import pygame.locals
 
 pygame.display.set_caption('Snake by Monika Veltman')
-UNIFIED_BUTTONS = ["Выйти в главное меню", "Выйти из игры"]
-MENU_BUTTONS = ["Играть", "Выбрать уровень", UNIFIED_BUTTONS[1]]
-PAUSE_BUTTONS = ["Продолжить"] + UNIFIED_BUTTONS
+PLAY, PICK_LEVEL, MAIN_MENU, QUIT, CONTINUE = \
+    "Играть", "Выбрать уровень", "Выйти в главное меню", "Выйти из игры", "Продолжить"
+UP, RIGHT, DOWN, LEFT = "UP", "RIGHT", "DOWN", "LEFT"
+DIRECTION = [UP, RIGHT, DOWN, LEFT]
+UNIFIED_BUTTONS = [MAIN_MENU, QUIT]
+MENU_BUTTONS = [PLAY, PICK_LEVEL, UNIFIED_BUTTONS[1]]
+PAUSE_BUTTONS = [CONTINUE] + UNIFIED_BUTTONS
 PICK_LEVEL_BUTTONS = UNIFIED_BUTTONS
-DIRECTION = ["UP", "RIGHT", "DOWN", "LEFT"]
 
 black = pygame.Color('black')
 white = pygame.Color('white')
@@ -22,7 +25,7 @@ class Snake:
 
     def __init__(self, coords):
         self.coords = coords
-        self.direction = 'RIGHT'
+        self.direction = RIGHT
         self.speed = self.speed_default
         self.position = copy.deepcopy(self.coords[0])
 
@@ -62,14 +65,9 @@ class State:
         self.snake = copy.deepcopy(levels[self.current_level].snake)
 
 
-class Game:
-    fps = pygame.time.Clock()
-
-    def __init__(self):
-        pygame.init()
-        self.surface = pygame.display.set_mode((window_x, window_y + 150))
-
-        self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
+class Menu:
+    def __init__(self, game):
+        self.game = game
 
     def menu_mechanism(self, list_of_buttons, draw_menu, selected=0):
         draw_menu(selected)
@@ -87,9 +85,9 @@ class Game:
                         draw_menu(selected)
                     elif event.key == pygame.locals.K_RETURN:
                         if list_of_buttons[selected] == 'Играть':
-                            self.run()
+                            self.game.run()
                         if list_of_buttons[selected] in levels_list:
-                            self.run(levels_list[selected])
+                            self.game.run(levels_list[selected])
                         if list_of_buttons[selected] == 'Выбрать уровень':
                             self.menu_mechanism(levels_list + PICK_LEVEL_BUTTONS, self.draw_pick_level_menu)
                         if list_of_buttons[selected] == 'Выйти в главное меню':
@@ -106,11 +104,11 @@ class Game:
         self.draw_general("Choose ur (fighter) level", levels_list + PICK_LEVEL_BUTTONS, selected)
 
     def draw_general(self, menu_name, list_of_buttons, selected=0):
-        self.surface.fill(white)
+        self.game.surface.fill(white)
         font = pygame.font.SysFont('arial', 80)
         header = font.render(menu_name, True, black)
         header_rect = header.get_rect()
-        self.surface.blit(header, ((window_x - header_rect.width) / 2, 100))
+        self.game.surface.blit(header, ((window_x - header_rect.width) / 2, 100))
         button_font = pygame.font.SysFont('arial', 40)
         selected_button_font = pygame.font.SysFont('arial', 45)
         for button in range(len(list_of_buttons)):
@@ -118,8 +116,19 @@ class Game:
                 text = selected_button_font.render(list_of_buttons[button], True, black)
             else:
                 text = button_font.render(list_of_buttons[button], True, (100, 100, 100))
-            self.surface.blit(text, (200, 200 + button * 50))
+            self.game.surface.blit(text, (200, 200 + button * 50))
         pygame.display.update()
+
+
+class Game:
+    fps = pygame.time.Clock()
+
+    def __init__(self):
+        pygame.init()
+        self.surface = pygame.display.set_mode((window_x, window_y + 150))
+        self.menu = Menu(self)
+
+        self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
 
     def draw_footer(self, status):
         rect_object = pygame.Rect(0, window_y, window_x, 150)
@@ -144,25 +153,25 @@ class Game:
                     exit(0)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.locals.K_ESCAPE:
-                        self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
+                        self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
                     if event.key in [pygame.locals.K_LEFT, pygame.locals.K_a]:
-                        change_to = 'LEFT'
+                        change_to = LEFT
                     elif event.key in [pygame.locals.K_RIGHT, pygame.locals.K_d]:
-                        change_to = 'RIGHT'
+                        change_to = RIGHT
                     elif event.key in [pygame.locals.K_UP, pygame.locals.K_w]:
-                        change_to = 'UP'
+                        change_to = UP
                     elif event.key in [pygame.locals.K_DOWN, pygame.locals.K_s]:
-                        change_to = 'DOWN'
+                        change_to = DOWN
                 if (DIRECTION.index(change_to) + 2) % 4 != DIRECTION.index(state.snake.direction)\
                         and change_to != state.snake.direction:
                     state.snake.direction = change_to
-            if state.snake.direction == 'UP':
+            if state.snake.direction == UP:
                 state.snake.position[1] -= block_size
-            elif state.snake.direction == 'DOWN':
+            elif state.snake.direction == DOWN:
                 state.snake.position[1] += block_size
-            elif state.snake.direction == 'LEFT':
+            elif state.snake.direction == LEFT:
                 state.snake.position[0] -= block_size
-            elif state.snake.direction == 'RIGHT':
+            elif state.snake.direction == RIGHT:
                 state.snake.position[0] += block_size
 
             state.snake.coords.insert(0, list(state.snake.position))
@@ -180,7 +189,7 @@ class Game:
 
             if state.health == 0:
                 pygame.time.delay(100)
-                self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
+                self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
             self.draw_footer(state)
             pygame.display.update()
 
