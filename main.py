@@ -6,6 +6,7 @@ UNIFIED_BUTTONS = ["Выйти в главное меню", "Выйти из и�
 MENU_BUTTONS = ["Играть", "Выбрать уровень", UNIFIED_BUTTONS[1]]
 PAUSE_BUTTONS = ["Продолжить"] + UNIFIED_BUTTONS
 PICK_LEVEL_BUTTONS = UNIFIED_BUTTONS
+DIRECTION = ["UP", "RIGHT", "DOWN", "LEFT"]
 
 black = pygame.Color('black')
 white = pygame.Color('white')
@@ -68,9 +69,9 @@ class Game:
         pygame.init()
         self.surface = pygame.display.set_mode((window_x, window_y + 150))
 
-        self.mechanism(MENU_BUTTONS, self.draw_main_menu)
+        self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
 
-    def mechanism(self, list_of_buttons, draw_menu, selected=0):
+    def menu_mechanism(self, list_of_buttons, draw_menu, selected=0):
         draw_menu(selected)
         pygame.time.wait(200)
         running = True
@@ -90,9 +91,9 @@ class Game:
                         if list_of_buttons[selected] in levels_list:
                             self.run(levels_list[selected])
                         if list_of_buttons[selected] == 'Выбрать уровень':
-                            self.mechanism(levels_list + PICK_LEVEL_BUTTONS, self.draw_pick_level_menu)
+                            self.menu_mechanism(levels_list + PICK_LEVEL_BUTTONS, self.draw_pick_level_menu)
                         if list_of_buttons[selected] == 'Выйти в главное меню':
-                            self.mechanism(MENU_BUTTONS, self.draw_main_menu)
+                            self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
                         if selected == len(list_of_buttons) - 1:
                             exit(0)
                 elif event.type == pygame.locals.QUIT:
@@ -143,7 +144,7 @@ class Game:
                     exit(0)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.locals.K_ESCAPE:
-                        self.mechanism(MENU_BUTTONS, self.draw_main_menu)
+                        self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
                     if event.key in [pygame.locals.K_LEFT, pygame.locals.K_a]:
                         change_to = 'LEFT'
                     elif event.key in [pygame.locals.K_RIGHT, pygame.locals.K_d]:
@@ -152,14 +153,9 @@ class Game:
                         change_to = 'UP'
                     elif event.key in [pygame.locals.K_DOWN, pygame.locals.K_s]:
                         change_to = 'DOWN'
-                if change_to == 'UP' and state.snake.direction != 'DOWN':
-                    state.snake.direction = 'UP'
-                if change_to == 'DOWN' and state.snake.direction != 'UP':
-                    state.snake.direction = 'DOWN'
-                if change_to == 'LEFT' and state.snake.direction != 'RIGHT':
-                    state.snake.direction = 'LEFT'
-                if change_to == 'RIGHT' and state.snake.direction != 'LEFT':
-                    state.snake.direction = 'RIGHT'
+                if (DIRECTION.index(change_to) + 2) % 4 != DIRECTION.index(state.snake.direction)\
+                        and change_to != state.snake.direction:
+                    state.snake.direction = change_to
             if state.snake.direction == 'UP':
                 state.snake.position[1] -= block_size
             elif state.snake.direction == 'DOWN':
@@ -184,7 +180,7 @@ class Game:
 
             if state.health == 0:
                 pygame.time.delay(100)
-                self.mechanism(MENU_BUTTONS, self.draw_main_menu)
+                self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
             self.draw_footer(state)
             pygame.display.update()
 
