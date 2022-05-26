@@ -142,6 +142,8 @@ class Game:
                 if event.type == pygame.locals.QUIT:
                     exit(0)
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.locals.K_ESCAPE:
+                        self.mechanism(MENU_BUTTONS, self.draw_main_menu)
                     if event.key in [pygame.locals.K_LEFT, pygame.locals.K_a]:
                         change_to = 'LEFT'
                     elif event.key in [pygame.locals.K_RIGHT, pygame.locals.K_d]:
