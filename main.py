@@ -18,7 +18,7 @@ window_x = 800
 window_y = 600
 
 block_size = 20
-MOVEMENT = {UP : (0, -block_size), LEFT : (-block_size, 0), DOWN : (0, block_size), RIGHT : (block_size, 0)}
+MOVEMENT = {UP: (0, -block_size), LEFT: (-block_size, 0), DOWN: (0, block_size), RIGHT: (block_size, 0)}
 
 
 class Snake:
@@ -95,7 +95,7 @@ class Menu:
                             self.menu_mechanism(levels_list + PICK_LEVEL_BUTTONS, self.draw_pick_level_menu)
                         if list_of_buttons[selected] == MAIN_MENU:
                             self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
-                        if selected == len(list_of_buttons) - 1:
+                        if list_of_buttons[selected] == QUIT:
                             exit(0)
                 elif event.type == pygame.locals.QUIT:
                     exit(0)
@@ -136,11 +136,11 @@ class Game:
 
         self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
 
-    def draw_footer(self, status):
+    def draw_footer(self, state):
         rect_object = pygame.Rect(0, window_y, window_x, 150)
         pygame.draw.rect(self.surface, white, rect_object)
         font = pygame.font.SysFont('arial', 30)
-        health = font.render(f"Health: {status.health}", True, black)
+        health = font.render(f"Health: {state.health}", True, black)
         self.surface.blit(health, (15, window_y + 30))
         score = font.render(f"Ur mom gay", True, black)
         self.surface.blit(score, (15, window_y + 75))
@@ -153,7 +153,7 @@ class Game:
         change_to = state.snake.direction
 
         while running:
-            self.fps.tick(state.snake.speed)
+            self.fps.tick(state.snake.speed*0.1)
             for event in pygame.event.get():
                 if event.type == pygame.locals.QUIT:
                     exit(0)
@@ -176,14 +176,15 @@ class Game:
             # и заменяет большой иф
             state.snake.position = [x+y for x, y in zip(state.snake.position, MOVEMENT[state.snake.direction])]
 
+            if state.snake.position[0] < 0 or state.snake.position[0] > window_x - block_size \
+                    or state.snake.position[1] < 0 or state.snake.position[1] > window_y - block_size\
+                    or state.snake.position in state.snake.coords:
+                state.health -= 1
+                state.reset_snake()
+
             state.snake.coords.insert(0, list(state.snake.position))
             state.snake.coords.pop()
             self.surface.fill(black)
-
-            if state.snake.position[0] < 0 or state.snake.position[0] > window_x - block_size \
-                    or state.snake.position[1] < 0 or state.snake.position[1] > window_y - block_size:
-                state.health -= 1
-                state.reset_snake()
 
             for pos in state.snake.coords:
                 pygame.draw.rect(self.surface, white,
