@@ -1,5 +1,6 @@
 import copy
 import pygame.locals
+import random
 
 pygame.display.set_caption('Snake by Monika Veltman')
 PLAY, PICK_LEVEL, MAIN_MENU, QUIT, CONTINUE = \
@@ -13,6 +14,7 @@ PICK_LEVEL_BUTTONS = UNIFIED_BUTTONS
 
 black = pygame.Color('black')
 white = pygame.Color('white')
+red = pygame.Color('red')
 
 window_x = 800
 window_y = 600
@@ -33,6 +35,24 @@ class Snake:
     @property
     def len(self):
         return len(self.coords)
+
+
+class Food:
+    def __init__(self, food_color):
+        self.food_color = food_color
+        self.foodx = round(random.randrange(0, window_x - block_size) / block_size) * block_size
+        self.foody = round(random.randrange(0, window_y - block_size) / block_size) * block_size
+
+    def draw_food(self, surface, name):
+        # pygame.draw.rect(
+        #     surface, self.food_color, pygame.Rect(
+        #         self.foodx, self.foody,
+        #         block_size, block_size))
+        self.draw_picture(surface, name, self.foodx, self.foody)
+
+    def draw_picture(self, surface, name, x, y):
+        picture = pygame.transform.scale(pygame.image.load(name), (block_size, block_size))
+        surface.blit(picture, (x, y))
 
 
 class Level:
@@ -146,15 +166,14 @@ class Game:
         self.surface.blit(score, (15, window_y + 75))
         pygame.display.update()
 
-    def draw_picture(self, name, x, y):
-        picture = pygame.transform.scale(pygame.image.load(name), (block_size, block_size))
-        self.surface.blit(picture, (x, y))
+
 
     def run(self, picked_level=levels_list[0]):
         running = True
         pygame.event.clear()
         state = State(picked_level)
         change_to = state.snake.direction
+        food = Food(red)
 
         while running:
             self.fps.tick(state.snake.speed)
@@ -180,15 +199,25 @@ class Game:
             # и заменяет большой иф
             state.snake.position = [x+y for x, y in zip(state.snake.position, MOVEMENT[state.snake.direction])]
 
-            if state.snake.position[0] < 0 or state.snake.position[0] > window_x - block_size \
-                    or state.snake.position[1] < 0 or state.snake.position[1] > window_y - block_size\
-                    or state.snake.position in state.snake.coords:
+            if state.snake.position in state.snake.coords:
                 state.health -= 1
                 state.reset_snake()
 
             state.snake.coords.insert(0, list(state.snake.position))
-            state.snake.coords.pop()
+            if state.snake.position[0] == food.foodx and state.snake.position[1] == food.foody:
+                food = Food(red)
+                state.score_default += 1
+            else:
+                state.snake.coords.pop()
+
             self.surface.fill(black)
+
+            food.draw_food(self.surface, 'monster.png')
+
+            if state.snake.position[0] < 0 or state.snake.position[0] > window_x \
+                    or state.snake.position[1] < 0 or state.snake.position[1] > window_y - block_size:
+                state.health -= 1
+                state.reset_snake()
 
             for pos in state.snake.coords:
                 pygame.draw.rect(self.surface, white,
