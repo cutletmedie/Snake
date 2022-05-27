@@ -4,8 +4,8 @@ import pygame.locals
 pygame.display.set_caption('Snake by Monika Veltman')
 PLAY, PICK_LEVEL, MAIN_MENU, QUIT, CONTINUE = \
     "Играть", "Выбрать уровень", "Выйти в главное меню", "Выйти из игры", "Продолжить"
-UP, RIGHT, DOWN, LEFT = "UP", "RIGHT", "DOWN", "LEFT"
-DIRECTION = [UP, RIGHT, DOWN, LEFT]
+UP, LEFT, DOWN, RIGHT = "UP", "LEFT", "DOWN", "RIGHT"
+DIRECTION = [UP, LEFT, DOWN, RIGHT]
 UNIFIED_BUTTONS = [MAIN_MENU, QUIT]
 MENU_BUTTONS = [PLAY, PICK_LEVEL, UNIFIED_BUTTONS[1]]
 PAUSE_BUTTONS = [CONTINUE] + UNIFIED_BUTTONS
@@ -18,6 +18,7 @@ window_x = 800
 window_y = 600
 
 block_size = 20
+MOVEMENT = {UP : (0, -block_size), LEFT : (-block_size, 0), DOWN : (0, block_size), RIGHT : (block_size, 0)}
 
 
 class Snake:
@@ -84,13 +85,15 @@ class Menu:
                         selected = (selected - 1) % len(list_of_buttons)
                         draw_menu(selected)
                     elif event.key == pygame.locals.K_RETURN:
-                        if list_of_buttons[selected] == 'Играть':
+                        if list_of_buttons[selected] == PLAY:
                             self.game.run()
+                        if list_of_buttons[selected] == CONTINUE:
+                            return
                         if list_of_buttons[selected] in levels_list:
                             self.game.run(levels_list[selected])
-                        if list_of_buttons[selected] == 'Выбрать уровень':
+                        if list_of_buttons[selected] == PICK_LEVEL:
                             self.menu_mechanism(levels_list + PICK_LEVEL_BUTTONS, self.draw_pick_level_menu)
-                        if list_of_buttons[selected] == 'Выйти в главное меню':
+                        if list_of_buttons[selected] == MAIN_MENU:
                             self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
                         if selected == len(list_of_buttons) - 1:
                             exit(0)
@@ -102,6 +105,9 @@ class Menu:
 
     def draw_pick_level_menu(self, selected=0):
         self.draw_general("Choose ur (fighter) level", levels_list + PICK_LEVEL_BUTTONS, selected)
+
+    def draw_pause_menu(self, selected=0):
+        self.draw_general("Pause", PAUSE_BUTTONS, selected)
 
     def draw_general(self, menu_name, list_of_buttons, selected=0):
         self.game.surface.fill(white)
@@ -153,7 +159,7 @@ class Game:
                     exit(0)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.locals.K_ESCAPE:
-                        self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
+                        self.menu.menu_mechanism(PAUSE_BUTTONS, self.menu.draw_pause_menu)
                     if event.key in [pygame.locals.K_LEFT, pygame.locals.K_a]:
                         change_to = LEFT
                     elif event.key in [pygame.locals.K_RIGHT, pygame.locals.K_d]:
@@ -165,14 +171,10 @@ class Game:
                 if (DIRECTION.index(change_to) + 2) % 4 != DIRECTION.index(state.snake.direction)\
                         and change_to != state.snake.direction:
                     state.snake.direction = change_to
-            if state.snake.direction == UP:
-                state.snake.position[1] -= block_size
-            elif state.snake.direction == DOWN:
-                state.snake.position[1] += block_size
-            elif state.snake.direction == LEFT:
-                state.snake.position[0] -= block_size
-            elif state.snake.direction == RIGHT:
-                state.snake.position[0] += block_size
+
+            # штука снизу к нынешнему положению головы прибавляет потенциальное ее перемещение
+            # и заменяет большой иф
+            state.snake.position = [x+y for x, y in zip(state.snake.position, MOVEMENT[state.snake.direction])]
 
             state.snake.coords.insert(0, list(state.snake.position))
             state.snake.coords.pop()
