@@ -17,7 +17,7 @@ white = pygame.Color('white')
 window_x = 800
 window_y = 600
 
-block_size = 20
+block_size = 30
 MOVEMENT = {UP: (0, -block_size), LEFT: (-block_size, 0), DOWN: (0, block_size), RIGHT: (block_size, 0)}
 
 
@@ -146,6 +146,10 @@ class Game:
         self.surface.blit(score, (15, window_y + 75))
         pygame.display.update()
 
+    def draw_picture(self, name, x, y):
+        picture = pygame.transform.scale(pygame.image.load(name), (block_size, block_size))
+        self.surface.blit(picture, (x, y))
+
     def run(self, picked_level=levels_list[0]):
         running = True
         pygame.event.clear()
@@ -153,7 +157,7 @@ class Game:
         change_to = state.snake.direction
 
         while running:
-            self.fps.tick(state.snake.speed*0.1)
+            self.fps.tick(state.snake.speed)
             for event in pygame.event.get():
                 if event.type == pygame.locals.QUIT:
                     exit(0)
@@ -189,6 +193,7 @@ class Game:
             for pos in state.snake.coords:
                 pygame.draw.rect(self.surface, white,
                                  pygame.Rect(pos[0], pos[1], block_size, block_size))
+                # self.draw_picture("turtle.png", pos[0], pos[1])
 
             if state.health == 0:
                 pygame.time.delay(100)
