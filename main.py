@@ -1,6 +1,7 @@
 import copy
 import pygame.locals
 import random
+import time
 
 pygame.display.set_caption('Snake by Monika Veltman')
 PLAY, PICK_LEVEL, MAIN_MENU, QUIT, CONTINUE = \
@@ -20,7 +21,6 @@ window_x = 800
 window_y = 600
 
 block_size = 30
-MOVEMENT = {UP: (0, -block_size), LEFT: (-block_size, 0), DOWN: (0, block_size), RIGHT: (block_size, 0)}
 
 
 class Snake:
@@ -36,23 +36,34 @@ class Snake:
     def len(self):
         return len(self.coords)
 
+    def eat_fruit(self, name, state):
+        if name == 'monster.png':
+            self.speed += 5
+        if name == 'turtle.png':
+            self.speed -= 5
+        if name == 'apple.png':
+            self.coords.insert(0, list(self.position))
+            state.score += 1
+        if name == 'badapple.png' and self.len != 1:
+            self.coords.pop()
+        if name == 'star.png':
+            state.score += 3
+        if name == 'heart.png':
+            state.health += 1
+
 
 class Food:
-    def __init__(self, food_color):
-        self.food_color = food_color
+    def __init__(self, positions):
         self.foodx = round(random.randrange(0, window_x - block_size) / block_size) * block_size
         self.foody = round(random.randrange(0, window_y - block_size) / block_size) * block_size
 
     def draw_food(self, surface, name):
-        # pygame.draw.rect(
-        #     surface, self.food_color, pygame.Rect(
-        #         self.foodx, self.foody,
-        #         block_size, block_size))
-        self.draw_picture(surface, name, self.foodx, self.foody)
-
-    def draw_picture(self, surface, name, x, y):
         picture = pygame.transform.scale(pygame.image.load(name), (block_size, block_size))
-        surface.blit(picture, (x, y))
+        surface.blit(picture, (self.foodx, self.foody))
+
+    @staticmethod
+    def random_type():
+        return random.choice(['apple', 'monster', 'turtle', 'badapple', 'star', 'heart']) + '.png'
 
 
 class Level:
@@ -61,8 +72,7 @@ class Level:
         self.snake = snake
 
 
-levels = {"first_level":
-              Level(10, Snake([[10 * block_size, 5 * block_size],
+levels = {"first_level": Level(10, Snake([[10 * block_size, 5 * block_size],
                                [9 * block_size, 5 * block_size],
                                [8 * block_size, 5 * block_size], [7 * block_size, 5 * block_size]])),
           "second_level": Level(25, Snake(
@@ -87,8 +97,8 @@ class State:
 
 
 class Menu:
-    def __init__(self, game):
-        self.game = game
+    def __init__(self, _game):
+        self.game = _game
 
     def menu_mechanism(self, list_of_buttons, draw_menu, selected=0):
         draw_menu(selected)
@@ -156,24 +166,37 @@ class Game:
 
         self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
 
+    def game_over(self, state):
+        self.surface.fill(black)
+        my_font = pygame.font.SysFont('times new roman', 50)
+        game_over_surface = my_font.render(
+            'Your Score is : ' + str(state.score), True, red)
+        game_over_rect = game_over_surface.get_rect()
+        game_over_rect.midtop = (window_x / 2, window_y / 2)
+        self.surface.blit(game_over_surface, game_over_rect)
+        pygame.display.flip()
+        time.sleep(2)
+        self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
+
     def draw_footer(self, state):
         rect_object = pygame.Rect(0, window_y, window_x, 150)
         pygame.draw.rect(self.surface, white, rect_object)
         font = pygame.font.SysFont('arial', 30)
         health = font.render(f"Health: {state.health}", True, black)
         self.surface.blit(health, (15, window_y + 30))
-        score = font.render(f"Ur mom gay", True, black)
+        score = font.render(f"Score: {state.score}", True, black)
         self.surface.blit(score, (15, window_y + 75))
         pygame.display.update()
 
-
-
     def run(self, picked_level=levels_list[0]):
+        MOVEMENT = {UP: (0, -block_size), LEFT: (-block_size, 0),
+                    DOWN: (0, block_size), RIGHT: (block_size, 0)}
         running = True
         pygame.event.clear()
         state = State(picked_level)
         change_to = state.snake.direction
-        food = Food(red)
+        food = Food(state.snake.coords)
+        name = food.random_type()
 
         while running:
             self.fps.tick(state.snake.speed)
@@ -204,15 +227,16 @@ class Game:
                 state.reset_snake()
 
             state.snake.coords.insert(0, list(state.snake.position))
-            if state.snake.position[0] == food.foodx and state.snake.position[1] == food.foody:
-                food = Food(red)
-                state.score_default += 1
-            else:
-                state.snake.coords.pop()
+            state.snake.coords.pop()
+
+            if state.snake.position == [food.foodx, food.foody]:
+                state.snake.eat_fruit(name, state)
+                food = Food(state.snake.coords)
+                name = food.random_type()
 
             self.surface.fill(black)
 
-            food.draw_food(self.surface, 'monster.png')
+            food.draw_food(self.surface, name)
 
             if state.snake.position[0] < 0 or state.snake.position[0] > window_x \
                     or state.snake.position[1] < 0 or state.snake.position[1] > window_y - block_size:
@@ -222,11 +246,10 @@ class Game:
             for pos in state.snake.coords:
                 pygame.draw.rect(self.surface, white,
                                  pygame.Rect(pos[0], pos[1], block_size, block_size))
-                # self.draw_picture("turtle.png", pos[0], pos[1])
 
             if state.health == 0:
                 pygame.time.delay(100)
-                self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
+                self.game_over(state)
             self.draw_footer(state)
             pygame.display.update()
 
