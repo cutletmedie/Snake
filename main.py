@@ -27,7 +27,7 @@ class Snake:
     speed_default = 15
 
     def __init__(self, coords):
-        self.coords = coords
+        self.coords = self.get_coords(coords)
         self.direction = RIGHT
         self.speed = self.speed_default
         self.position = copy.deepcopy(self.coords[0])
@@ -36,34 +36,48 @@ class Snake:
     def len(self):
         return len(self.coords)
 
-    def eat_fruit(self, name, state):
-        if name == 'monster.png':
+    def get_coords(self, coords):
+        return [[coord * block_size for coord in pair] for pair in coords]
+
+    def eat_fruit(self, state):
+        type = state.food.type
+        if type == 'monster':
             self.speed += 5
-        if name == 'turtle.png':
-            self.speed -= 5
-        if name == 'apple.png':
-            self.coords.insert(0, list(self.position))
+        if type == 'turtle':
+            if self.speed > 5:
+                self.speed -= 5
+        if type == 'apple':
             state.score += 1
-        if name == 'badapple.png' and self.len != 1:
-            self.coords.pop()
-        if name == 'star.png':
+        if type == 'bad_apple':
+            if self.len > 3:
+                self.coords.pop()
+            else:
+                pass
+        if type == 'star':
             state.score += 3
-        if name == 'heart.png':
-            state.health += 1
+        if type == 'heart':
+            if state.health < 5:
+                state.health += 1
 
 
 class Food:
-    def __init__(self, positions):
-        self.foodx = round(random.randrange(0, window_x - block_size) / block_size) * block_size
-        self.foody = round(random.randrange(0, window_y - block_size) / block_size) * block_size
+    def __init__(self):
+        self.type = self.random_type
+        self.coords = [round(random.randrange(0, window_x - block_size) / block_size) * block_size,
+                       round(random.randrange(0, window_y - block_size) / block_size) * block_size]
 
-    def draw_food(self, surface, name):
-        picture = pygame.transform.scale(pygame.image.load(name), (block_size, block_size))
-        surface.blit(picture, (self.foodx, self.foody))
+    def draw_food(self, surface):
+        picture = pygame.transform.scale(pygame.image.load(f'{self.type}.png'), (block_size, block_size))
+        surface.blit(picture, (self.coords[0], self.coords[1]))
 
-    @staticmethod
-    def random_type():
-        return random.choice(['apple', 'monster', 'turtle', 'badapple', 'star', 'heart']) + '.png'
+    def reset_food(self):
+        self.__init__()
+
+    @property
+    def random_type(self):
+        apple, monster, turtle, bad_apple, star, heart = 'apple', 'monster', 'turtle', 'bad_apple', 'star', 'heart'
+        food_type = [apple, monster, turtle, bad_apple, star, heart]
+        return random.choice([type for type in food_type])
 
 
 class Level:
@@ -72,11 +86,11 @@ class Level:
         self.snake = snake
 
 
-levels = {"first_level": Level(10, Snake([[10 * block_size, 5 * block_size],
-                               [9 * block_size, 5 * block_size],
-                               [8 * block_size, 5 * block_size], [7 * block_size, 5 * block_size]])),
+levels = {"first_level": Level(10, Snake([[10, 5],
+                               [9, 5],
+                               [8, 5], [7, 5]])),
           "second_level": Level(25, Snake(
-              [[1 * block_size, 3 * block_size], [1 * block_size, 2 * block_size], [1 * block_size, 1 * block_size]]))}
+              [[1, 3], [1, 2], [1, 1]]))}
 levels_list = list(levels.keys())
 
 
@@ -91,6 +105,7 @@ class State:
         self.snake = copy.deepcopy(levels[self.current_level].snake)
         self.score = self.score_default
         self.health = self.health_default
+        self.food = Food()
 
     def reset_snake(self):
         self.snake = copy.deepcopy(levels[self.current_level].snake)
@@ -101,7 +116,9 @@ class Menu:
         self.game = _game
 
     def menu_mechanism(self, list_of_buttons, draw_menu, selected=0):
+        menu_exceptions = [self.draw_main_menu, self.draw_pause_menu]
         draw_menu(selected)
+
         pygame.time.wait(200)
         running = True
         pygame.event.clear()
@@ -114,6 +131,9 @@ class Menu:
                     elif event.key in [pygame.locals.K_UP, pygame.locals.K_w]:
                         selected = (selected - 1) % len(list_of_buttons)
                         draw_menu(selected)
+                    elif event.key == pygame.locals.K_ESCAPE and \
+                            draw_menu not in menu_exceptions and draw_menu != [x for x in menu_exceptions]:
+                        self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
                     elif event.key == pygame.locals.K_RETURN:
                         if list_of_buttons[selected] == PLAY:
                             self.game.run()
@@ -155,6 +175,21 @@ class Menu:
             self.game.surface.blit(text, (200, 200 + button * 50))
         pygame.display.update()
 
+    def draw_game_over(self, state):
+        self.game.surface.fill(black)
+        my_font = pygame.font.SysFont('arial', 45)
+        game_over_surface = my_font.render(
+            'Your Score is : ' + str(state.score), True, red)
+        game_over_rect = game_over_surface.get_rect()
+        game_over_rect.midtop = (window_x / 2, window_y / 2)
+        self.game.surface.blit(game_over_surface, game_over_rect)
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.key == pygame.locals.K_ESCAPE:
+                self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
+            elif event.type == pygame.locals.QUIT:
+                exit(0)
+
 
 class Game:
     fps = pygame.time.Clock()
@@ -166,17 +201,8 @@ class Game:
 
         self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
 
-    def game_over(self, state):
-        self.surface.fill(black)
-        my_font = pygame.font.SysFont('times new roman', 50)
-        game_over_surface = my_font.render(
-            'Your Score is : ' + str(state.score), True, red)
-        game_over_rect = game_over_surface.get_rect()
-        game_over_rect.midtop = (window_x / 2, window_y / 2)
-        self.surface.blit(game_over_surface, game_over_rect)
-        pygame.display.flip()
-        time.sleep(2)
-        self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
+    def fail(self, state):
+        self.menu.draw_game_over(state)
 
     def draw_footer(self, state):
         rect_object = pygame.Rect(0, window_y, window_x, 150)
@@ -195,8 +221,6 @@ class Game:
         pygame.event.clear()
         state = State(picked_level)
         change_to = state.snake.direction
-        food = Food(state.snake.coords)
-        name = food.random_type()
 
         while running:
             self.fps.tick(state.snake.speed)
@@ -227,16 +251,18 @@ class Game:
                 state.reset_snake()
 
             state.snake.coords.insert(0, list(state.snake.position))
-            state.snake.coords.pop()
+            if state.snake.position == state.food.coords:
 
-            if state.snake.position == [food.foodx, food.foody]:
-                state.snake.eat_fruit(name, state)
-                food = Food(state.snake.coords)
-                name = food.random_type()
+                state.snake.eat_fruit(state)
+                if 'apple' not in state.food.type:
+                    state.snake.coords.pop()
+                state.food.reset_food()
+            else:
+                state.snake.coords.pop()
 
             self.surface.fill(black)
 
-            food.draw_food(self.surface, name)
+            state.food.draw_food(self.surface)
 
             if state.snake.position[0] < 0 or state.snake.position[0] > window_x \
                     or state.snake.position[1] < 0 or state.snake.position[1] > window_y - block_size:
@@ -247,10 +273,11 @@ class Game:
                 pygame.draw.rect(self.surface, white,
                                  pygame.Rect(pos[0], pos[1], block_size, block_size))
 
-            if state.health == 0:
+            if state.health < 1:
                 pygame.time.delay(100)
-                self.game_over(state)
-            self.draw_footer(state)
+                self.fail(state)
+            else:
+                self.draw_footer(state)
             pygame.display.update()
 
 
