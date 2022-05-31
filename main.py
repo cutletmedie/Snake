@@ -3,8 +3,8 @@ import pygame.locals
 import random
 
 pygame.display.set_caption('Snake by Monika Veltman')
-PLAY, PICK_LEVEL, MAIN_MENU, QUIT, CONTINUE = \
-    "Играть", "Выбрать уровень", "Выйти в главное меню", "Выйти из игры", "Продолжить"
+PLAY, PICK_LEVEL, MAIN_MENU, QUIT, CONTINUE, NEXT_LEVEL, TRY_AGAIN = \
+    "Играть", "Выбрать уровень", "Выйти в главное меню", "Выйти из игры", "Продолжить", "Следующий уровень", "Начать заново"
 UP, LEFT, DOWN, RIGHT = "UP", "LEFT", "DOWN", "RIGHT"
 DIRECTION = [UP, LEFT, DOWN, RIGHT]
 UNIFIED_BUTTONS = [MAIN_MENU, QUIT]
@@ -116,14 +116,20 @@ class State:
             pygame.time.delay(100)
             _game.win(self)
 
+    def check_next_level(self):
+        return self.current_level_index + 1 < len(levels_list)
+
 
 class Menu:
     def __init__(self, _game):
         self.game = _game
 
-    def menu_mechanism(self, list_of_buttons, draw_menu, selected=0):
+    def menu_mechanism(self, list_of_buttons, draw_menu, selected=0, state=None, color=white):
         menu_exceptions = [self.draw_main_menu, self.draw_pause_menu]
-        draw_menu(selected)
+        if state:
+            draw_menu(list_of_buttons, state, color, selected)
+        else:
+            draw_menu(selected)
 
         pygame.time.wait(200)
         running = True
@@ -133,14 +139,27 @@ class Menu:
                 if event.type == pygame.locals.KEYDOWN:
                     if event.key in [pygame.locals.K_DOWN, pygame.locals.K_s]:
                         selected = (selected + 1) % len(list_of_buttons)
-                        draw_menu(selected)
+                        if state:
+                            draw_menu(list_of_buttons, state, color, selected)
+                        else:
+                            draw_menu(selected)
                     elif event.key in [pygame.locals.K_UP, pygame.locals.K_w]:
                         selected = (selected - 1) % len(list_of_buttons)
-                        draw_menu(selected)
+                        if state:
+                            draw_menu(list_of_buttons, state, color, selected)
+                        else:
+                            draw_menu(selected)
                     elif event.key == pygame.locals.K_ESCAPE and \
                             draw_menu not in menu_exceptions and draw_menu != [x for x in menu_exceptions]:
                         self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
                     elif event.key == pygame.locals.K_RETURN:
+                        if list_of_buttons[selected] == TRY_AGAIN:
+                            self.game.run(levels_list[state.current_level_index])
+                        if list_of_buttons[selected] == NEXT_LEVEL:
+                            if state.check_next_level():
+                                self.game.run(levels_list[state.current_level_index+1])
+                            else:
+                                self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
                         if list_of_buttons[selected] == PLAY:
                             self.game.run()
                         if list_of_buttons[selected] == CONTINUE:
@@ -167,10 +186,11 @@ class Menu:
 
     def draw_general(self, menu_name, list_of_buttons, selected=0):
         self.game.surface.fill(white)
-        header_font = pygame.font.SysFont('arial', 80)
+        header_font = pygame.font.SysFont('arial', 70)
         header = header_font.render(menu_name, True, black)
         header_rect = header.get_rect()
-        self.game.surface.blit(header, ((window_x - header_rect.width) / 2, 100))
+        header_rect.midtop = (window_x / 2, window_y / 2 - 100)
+        self.game.surface.blit(header, header_rect)
         button_font = pygame.font.SysFont('arial', 40)
         selected_button_font = pygame.font.SysFont('arial', 45)
         for button in range(len(list_of_buttons)):
@@ -178,30 +198,39 @@ class Menu:
                 text = selected_button_font.render(list_of_buttons[button], True, black)
             else:
                 text = button_font.render(list_of_buttons[button], True, (100, 100, 100))
-            self.game.surface.blit(text, (200, 200 + button * 50))
+            text_rect = text.get_rect()
+            text_rect.midtop = (window_x / 2, window_y / 2 + button * 50)
+            self.game.surface.blit(text, text_rect)
         pygame.display.update()
 
-    def draw_condition_window(self, state, color):
+    def draw_condition_menu(self, list_of_buttons, state, color, selected=0):
         self.game.surface.fill(black)
-        score_font = pygame.font.SysFont('arial', 45)
+        score_font = pygame.font.SysFont('arial', 70)
         score = score_font.render(
             'Your Score is : ' + str(state.score), True, color)
         score_rect = score.get_rect()
-        score_rect.midtop = (window_x / 2, window_y / 2)
+        score_rect.midtop = (window_x / 2, window_y / 2 - 100)
         self.game.surface.blit(score, score_rect)
-        text_font = pygame.font.SysFont('arial', 30)
-        text = text_font.render('Нажмите ESC, чтобы выйти в главное меню', True, white)
-        text_rect = text.get_rect()
-        text_rect.midtop = (window_x / 2, window_y / 2 + score_rect.height * 2)
-        self.game.surface.blit(text, text_rect)
+        button_font = pygame.font.SysFont('arial', 40)
+        selected_button_font = pygame.font.SysFont('arial', 45)
+        for button in range(len(list_of_buttons)):
+            if button == selected:
+                text = selected_button_font.render(list_of_buttons[button], True, white)
+            else:
+                text = button_font.render(list_of_buttons[button], True, pygame.Color('gray'))
+            text_rect = text.get_rect()
+            text_rect.midtop = (window_x / 2, window_y / 2 + button * 50)
+            self.game.surface.blit(text, text_rect)
         pygame.display.update()
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.locals.KEYDOWN:
-                    if event.key == pygame.locals.K_ESCAPE:
-                        self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
-                if event.type == pygame.locals.QUIT:
-                    exit(0)
+
+    def draw_condition_window(self, state, color, selected=0):
+        list_of_buttons = UNIFIED_BUTTONS
+        if state.check_next_level():
+            list_of_buttons = [NEXT_LEVEL] + list_of_buttons
+        if color == red:
+            list_of_buttons = [TRY_AGAIN] + list_of_buttons
+        self.menu_mechanism(list_of_buttons,
+                            self.draw_condition_menu, 0, state, color)
 
 
 class Game:
@@ -230,12 +259,12 @@ class Game:
         self.surface.blit(score, (15, window_y + 75))
         pygame.display.update()
 
-    def run(self, picked_level=levels_list[0]):
+    def run(self, picked_level_name=levels_list[0]):
         MOVEMENT = {UP: (0, -block_size), LEFT: (-block_size, 0),
                     DOWN: (0, block_size), RIGHT: (block_size, 0)}
         running = True
         pygame.event.clear()
-        state = State(picked_level)
+        state = State(picked_level_name)
         change_to = state.snake.direction
 
         while running:
