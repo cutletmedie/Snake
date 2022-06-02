@@ -16,15 +16,17 @@ black = pygame.Color('black')
 white = pygame.Color('white')
 red = pygame.Color('red')
 green = pygame.Color('green')
+gray = (100, 100, 100)
 
 window_x = 800
 window_y = 600
+footer_size_y = 150
 
-block_size = 30
+block_size = 40
 
 
 class Snake:
-    speed_default = 15
+    speed_default = block_size * 0.3
 
     def __init__(self, coords):
         self.coords = self.get_coords(coords)
@@ -36,16 +38,17 @@ class Snake:
     def len(self):
         return len(self.coords)
 
-    def get_coords(self, coords):
+    @staticmethod
+    def get_coords(coords):
         return [[coord * block_size for coord in pair] for pair in coords]
 
     def eat_fruit(self, state):
         type = state.food.type
         if type == 'monster':
-            self.speed += 5
+            self.speed += self.speed_default * 0.3
         if type == 'turtle':
-            if self.speed > 5:
-                self.speed -= 5
+            if self.speed - self.speed_default * 0.3 > 0:
+                self.speed -= self.speed_default * 0.3
         if type == 'apple':
             state.score += 1
         if type == 'bad_apple':
@@ -124,10 +127,10 @@ class Menu:
     def __init__(self, _game):
         self.game = _game
 
-    def menu_mechanism(self, list_of_buttons, draw_menu, selected=0, state=None, color=white):
+    def menu_mechanism(self, list_of_buttons, draw_menu, selected=0, state=None, condition='fail'):
         menu_exceptions = [self.draw_main_menu, self.draw_pause_menu]
         if state:
-            draw_menu(list_of_buttons, state, color, selected)
+            draw_menu(list_of_buttons, state, condition, selected)
         else:
             draw_menu(selected)
 
@@ -140,13 +143,13 @@ class Menu:
                     if event.key in [pygame.locals.K_DOWN, pygame.locals.K_s]:
                         selected = (selected + 1) % len(list_of_buttons)
                         if state:
-                            draw_menu(list_of_buttons, state, color, selected)
+                            draw_menu(list_of_buttons, state, condition, selected)
                         else:
                             draw_menu(selected)
                     elif event.key in [pygame.locals.K_UP, pygame.locals.K_w]:
                         selected = (selected - 1) % len(list_of_buttons)
                         if state:
-                            draw_menu(list_of_buttons, state, color, selected)
+                            draw_menu(list_of_buttons, state, condition, selected)
                         else:
                             draw_menu(selected)
                     elif event.key == pygame.locals.K_ESCAPE and \
@@ -179,10 +182,10 @@ class Menu:
         self.draw_general("Snake Game", MENU_BUTTONS, selected)
 
     def draw_pick_level_menu(self, selected=0):
-        self.draw_general("Choose ur (fighter) level", levels_list + PICK_LEVEL_BUTTONS, selected)
+        self.draw_general("Выбери уровень", levels_list + PICK_LEVEL_BUTTONS, selected)
 
     def draw_pause_menu(self, selected=0):
-        self.draw_general("Pause", PAUSE_BUTTONS, selected)
+        self.draw_general("Пауза", PAUSE_BUTTONS, selected)
 
     def draw_general(self, menu_name, list_of_buttons, selected=0):
         self.game.surface.fill(white)
@@ -197,17 +200,17 @@ class Menu:
             if button == selected:
                 text = selected_button_font.render(list_of_buttons[button], True, black)
             else:
-                text = button_font.render(list_of_buttons[button], True, (100, 100, 100))
+                text = button_font.render(list_of_buttons[button], True, gray)
             text_rect = text.get_rect()
             text_rect.midtop = (window_x / 2, window_y / 2 + button * 50)
             self.game.surface.blit(text, text_rect)
         pygame.display.update()
 
-    def draw_condition_menu(self, list_of_buttons, state, color, selected=0):
+    def draw_condition_menu(self, list_of_buttons, state, condition, selected=0):
+        color = red if condition == 'fail' else green
         self.game.surface.fill(black)
         score_font = pygame.font.SysFont('arial', 70)
-        score = score_font.render(
-            'Your Score is : ' + str(state.score), True, color)
+        score = score_font.render(f'Твой счёт: {str(state.score)}', True, color)
         score_rect = score.get_rect()
         score_rect.midtop = (window_x / 2, window_y / 2 - 100)
         self.game.surface.blit(score, score_rect)
@@ -217,20 +220,20 @@ class Menu:
             if button == selected:
                 text = selected_button_font.render(list_of_buttons[button], True, white)
             else:
-                text = button_font.render(list_of_buttons[button], True, pygame.Color('gray'))
+                text = button_font.render(list_of_buttons[button], True, gray)
             text_rect = text.get_rect()
             text_rect.midtop = (window_x / 2, window_y / 2 + button * 50)
             self.game.surface.blit(text, text_rect)
         pygame.display.update()
 
-    def draw_condition_window(self, state, color, selected=0):
+    def draw_condition_window(self, state, condition, selected=0):
         list_of_buttons = UNIFIED_BUTTONS
-        if state.check_next_level():
+        if state.check_next_level() and condition == 'win':
             list_of_buttons = [NEXT_LEVEL] + list_of_buttons
-        if color == red:
+        if condition == 'fail':
             list_of_buttons = [TRY_AGAIN] + list_of_buttons
         self.menu_mechanism(list_of_buttons,
-                            self.draw_condition_menu, 0, state, color)
+                            self.draw_condition_menu, 0, state, condition)
 
 
 class Game:
@@ -238,25 +241,31 @@ class Game:
 
     def __init__(self):
         pygame.init()
-        self.surface = pygame.display.set_mode((window_x, window_y + 150))
+        self.surface = pygame.display.set_mode((window_x, window_y + footer_size_y))
         self.menu = Menu(self)
 
         self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
 
     def fail(self, state):
-        self.menu.draw_condition_window(state, red)
+        fail_condition = 'fail'
+        self.menu.draw_condition_window(state, fail_condition)
 
     def win(self, state):
-        self.menu.draw_condition_window(state, green)
+        win_condition = 'win'
+        self.menu.draw_condition_window(state, win_condition)
 
     def draw_footer(self, state):
-        rect_object = pygame.Rect(0, window_y, window_x, 150)
+        rect_object = pygame.Rect(0, window_y, window_x, footer_size_y)
         pygame.draw.rect(self.surface, white, rect_object)
         font = pygame.font.SysFont('arial', 30)
-        health = font.render(f"Health: {state.health}", True, black)
-        self.surface.blit(health, (15, window_y + 30))
-        score = font.render(f"Score: {state.score}", True, black)
-        self.surface.blit(score, (15, window_y + 75))
+        health = font.render(f"Здоровье: {state.health}", True, black)
+        health_rect = health.get_rect()
+        health_rect.midtop = (15 + health_rect.width/2, window_y + footer_size_y/2 - health_rect.height)
+        self.surface.blit(health, health_rect)
+        score = font.render(f"Счёт: {state.score}", True, black)
+        score_rect = score.get_rect()
+        score_rect.midtop = (15 + score_rect.width/2, window_y + footer_size_y/2 + 15)
+        self.surface.blit(score, score_rect)
         pygame.display.update()
 
     def run(self, picked_level_name=levels_list[0]):
@@ -308,7 +317,7 @@ class Game:
 
             state.food.draw_food(self.surface)
 
-            if state.snake.position[0] < 0 or state.snake.position[0] > window_x \
+            if state.snake.position[0] < 0 or state.snake.position[0] > window_x - block_size \
                     or state.snake.position[1] < 0 or state.snake.position[1] > window_y - block_size:
                 state.health -= 1
                 state.reset_snake()
