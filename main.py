@@ -1,10 +1,14 @@
+import collections
 import copy
+import itertools
+
 import pygame.locals
 import random
 
 pygame.display.set_caption('Snake by Monika Veltman')
 PLAY, PICK_LEVEL, MAIN_MENU, QUIT, CONTINUE, NEXT_LEVEL, TRY_AGAIN = \
-    "Играть", "Выбрать уровень", "Выйти в главное меню", "Выйти из игры", "Продолжить", "Следующий уровень", "Начать заново"
+    "Играть", "Выбрать уровень", "Выйти в главное меню",\
+    "Выйти из игры", "Продолжить", "Следующий уровень", "Начать заново"
 UP, LEFT, DOWN, RIGHT = "UP", "LEFT", "DOWN", "RIGHT"
 DIRECTION = [UP, LEFT, DOWN, RIGHT]
 UNIFIED_BUTTONS = [MAIN_MENU, QUIT]
@@ -17,6 +21,7 @@ white = pygame.Color('white')
 red = pygame.Color('red')
 green = pygame.Color('green')
 gray = (100, 100, 100)
+brown = pygame.Color('brown')
 
 window_x = 800
 window_y = 600
@@ -25,11 +30,15 @@ footer_size_y = 150
 block_size = 40
 
 
+def get_coords(coords):
+    return [[coord * block_size for coord in pair] for pair in coords]
+
+
 class Snake:
     speed_default = block_size * 0.3
 
     def __init__(self, coords):
-        self.coords = self.get_coords(coords)
+        self.coords = get_coords(coords)
         self.direction = RIGHT
         self.speed = self.speed_default
         self.position = copy.deepcopy(self.coords[0])
@@ -38,40 +47,44 @@ class Snake:
     def len(self):
         return len(self.coords)
 
-    @staticmethod
-    def get_coords(coords):
-        return [[coord * block_size for coord in pair] for pair in coords]
+    def check_food(self, state):
+        for obj in state.objects:
+            if obj.coords == self.position:
+                self.eat_fruit(state, obj)
+                if obj.type != 'apple':
+                    self.coords.pop()
+                obj.remove_food(self.position, state.objects)
+                return True
+        return False
 
-    def eat_fruit(self, state):
-        type = state.food.type
-        if type == 'monster':
+    def eat_fruit(self, state, food):
+        if food.type == 'monster':
             self.speed += self.speed_default * 0.3
-        if type == 'turtle':
+        if food.type == 'turtle':
             if self.speed - self.speed_default * 0.3 > 0:
                 self.speed -= self.speed_default * 0.3
-        if type == 'apple':
+        if food.type == 'apple':
             state.score += 1
-        if type == 'bad_apple':
+        if food.type == 'bad_apple':
             self.coords.pop()
-        if type == 'star':
+        if food.type == 'star':
             state.score += 3
-        if type == 'heart':
+        if food.type == 'heart':
             if state.health < 5:
                 state.health += 1
 
 
 class Food:
-    def __init__(self):
+    def __init__(self, coords):
         self.type = self.random_type
-        self.coords = [round(random.randrange(0, window_x - block_size) / block_size) * block_size,
-                       round(random.randrange(0, window_y - block_size) / block_size) * block_size]
+        self.coords = coords
 
     def draw_food(self, surface):
         picture = pygame.transform.scale(pygame.image.load(f'{self.type}.png'), (block_size, block_size))
         surface.blit(picture, (self.coords[0], self.coords[1]))
 
-    def reset_food(self):
-        self.__init__()
+    def remove_food(self, coords, objects):
+        objects.remove(self)
 
     @property
     def random_type(self):
@@ -81,16 +94,22 @@ class Food:
 
 
 class Level:
-    def __init__(self, required_len, snake):
+    def __init__(self, required_len, snake, obstacles):
         self.required_len = required_len
         self.snake = snake
+        self.obstacles = get_coords(obstacles)
+
+    def draw_obstacles(self, surface):
+        for obstacle in self.obstacles:
+            rect_object = pygame.Rect(obstacle[0], obstacle[1], block_size, block_size)
+            pygame.draw.rect(surface, brown, rect_object)
 
 
 levels = {"first_level": Level(10, Snake([[10, 5],
                                [9, 5],
-                               [8, 5], [7, 5]])),
+                               [8, 5], [7, 5]]), []),
           "second_level": Level(25, Snake(
-              [[1, 3], [1, 2], [1, 1]]))}
+              [[1, 3], [1, 2], [1, 1]]), [[3, 8], [14, 4]])}
 levels_list = list(levels.keys())
 
 
@@ -106,7 +125,7 @@ class State:
         self.snake = copy.deepcopy(levels[self.current_level_name].snake)
         self.score = self.score_default
         self.health = self.health_default
-        self.food = Food()
+        self.objects = []
 
     def reset_snake(self):
         self.snake = copy.deepcopy(levels[self.current_level_name].snake)
@@ -254,6 +273,22 @@ class Game:
         win_condition = 'win'
         self.menu.draw_condition_window(state, win_condition)
 
+    def generate_objects(self, state, surface):
+        while len(state.objects) < 3:
+            possible = []
+            for pos_x in range(int(window_x / block_size)):
+                for pos_y in range(int(window_y / block_size)):
+                    possible.append([pos_x * block_size, pos_y * block_size])
+            for pos in state.snake.coords:
+                possible.remove(pos)
+            for pos in state.current_level.obstacles:
+                possible.remove(pos)
+            for pos in state.objects:
+                possible.remove(pos.coords)
+            state.objects.append(Food(possible[random.randint(0, len(possible) - 1)]))
+        for obj in state.objects:
+            obj.draw_food(surface)
+
     def draw_footer(self, state):
         rect_object = pygame.Rect(0, window_y, window_x, footer_size_y)
         pygame.draw.rect(self.surface, white, rect_object)
@@ -300,22 +335,18 @@ class Game:
             # и заменяет большой иф
             state.snake.position = [x+y for x, y in zip(state.snake.position, MOVEMENT[state.snake.direction])]
 
-            if state.snake.position in state.snake.coords:
+            if state.snake.position in state.snake.coords \
+                    or state.snake.position in state.current_level.obstacles:
                 state.health -= 1
                 state.reset_snake()
 
             state.snake.coords.insert(0, list(state.snake.position))
-            if state.snake.position == state.food.coords:
-                state.snake.eat_fruit(state)
-                if state.food.type != 'apple':
-                    state.snake.coords.pop()
-                state.food.reset_food()
-            else:
+            if not state.snake.check_food(state):
                 state.snake.coords.pop()
 
             self.surface.fill(black)
-
-            state.food.draw_food(self.surface)
+            state.current_level.draw_obstacles(self.surface)
+            self.generate_objects(state, self.surface)
 
             if state.snake.position[0] < 0 or state.snake.position[0] > window_x - block_size \
                     or state.snake.position[1] < 0 or state.snake.position[1] > window_y - block_size:
