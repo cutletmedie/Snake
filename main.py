@@ -51,16 +51,16 @@ class Snake:
                 self.eat_fruit(state, obj)
                 if obj.type != 'apple':
                     self.coords.pop()
-                obj.remove_food(self.position, state.objects)
+                obj.remove_food(state.objects)
                 return True
         return False
 
     def eat_fruit(self, state, food):
         if food.type == 'monster':
-            self.speed += self.speed_default * 0.3
+            self.speed += self.speed_default * 0.25
         if food.type == 'turtle':
-            if self.speed - self.speed_default * 0.3 > 0:
-                self.speed -= self.speed_default * 0.3
+            if self.speed > self.speed_default * 0.5:
+                self.speed -= self.speed_default * 0.25
         if food.type == 'apple':
             state.score += 1
         if food.type == 'bad_apple':
@@ -81,7 +81,7 @@ class Food:
         picture = pygame.transform.scale(pygame.image.load(f'{self.type}.png'), (block_size, block_size))
         surface.blit(picture, (self.coords[0], self.coords[1]))
 
-    def remove_food(self, coords, objects):
+    def remove_food(self, objects):
         objects.remove(self)
 
     @property
@@ -129,9 +129,16 @@ class State:
         self.snake = copy.deepcopy(levels[self.current_level_name].snake)
 
     def check_state(self, _game):
-        if self.health < 1 or self.snake.len < 3:
+        if self.health < 1:
             pygame.time.delay(100)
             _game.fail(self)
+        if self.snake.len < 3:
+            if self.health < 1:
+                pygame.time.delay(100)
+                _game.fail(self)
+            else:
+                self.health -= 1
+                self.reset_snake()
         if self.snake.len >= self.current_level.required_len:
             pygame.time.delay(100)
             _game.win(self)
