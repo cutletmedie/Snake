@@ -1,6 +1,4 @@
-import collections
 import copy
-import itertools
 
 import pygame.locals
 import random
