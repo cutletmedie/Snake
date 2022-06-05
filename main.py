@@ -1,5 +1,4 @@
 import copy
-
 import pygame.locals
 import random
 
@@ -18,13 +17,12 @@ black = pygame.Color('black')
 white = pygame.Color('white')
 red = pygame.Color('red')
 green = pygame.Color('green')
-gray = (100, 100, 100)
+gray = pygame.Color('gray')
 brown = pygame.Color('brown')
 
 window_x = 800
 window_y = 600
 footer_size_y = 150
-
 block_size = 40
 
 
