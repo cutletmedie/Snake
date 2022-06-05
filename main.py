@@ -4,7 +4,7 @@ import random
 
 pygame.display.set_caption('Snake by Monika Veltman')
 PLAY, PICK_LEVEL, MAIN_MENU, QUIT, CONTINUE, NEXT_LEVEL, TRY_AGAIN = \
-    "Играть", "Выбрать уровень", "Выйти в главное меню",\
+    "Играть", "Выбрать уровень", "Выйти в главное меню", \
     "Выйти из игры", "Продолжить", "Следующий уровень", "Начать заново"
 UP, LEFT, DOWN, RIGHT = "UP", "LEFT", "DOWN", "RIGHT"
 DIRECTION = [UP, LEFT, DOWN, RIGHT]
@@ -71,12 +71,16 @@ class Snake:
 
 
 class Food:
-    def __init__(self, coords):
-        self.type = self.random_type
+    def __init__(self, coords, type=None):
+        if type:
+            self.type = type
+        else:
+            self.type = self.random_type
         self.coords = coords
 
     def draw_food(self, surface):
-        picture = pygame.transform.scale(pygame.image.load(f'{self.type}.png'), (block_size, block_size))
+        picture = pygame.transform.scale(pygame.image.load(
+            f'{self.type}.png'), (block_size, block_size))
         surface.blit(picture, (self.coords[0], self.coords[1]))
 
     def remove_food(self, objects):
@@ -84,7 +88,8 @@ class Food:
 
     @property
     def random_type(self):
-        apple, monster, turtle, bad_apple, star, heart = 'apple', 'monster', 'turtle', 'bad_apple', 'star', 'heart'
+        apple, monster, turtle, bad_apple, star, heart = \
+            'apple', 'monster', 'turtle', 'bad_apple', 'star', 'heart'
         food_type = [apple, monster, turtle, bad_apple, star, heart]
         return random.choice([type for type in food_type])
 
@@ -97,13 +102,14 @@ class Level:
 
     def draw_obstacles(self, surface):
         for obstacle in self.obstacles:
-            rect_object = pygame.Rect(obstacle[0], obstacle[1], block_size, block_size)
+            rect_object = pygame.Rect(obstacle[0],
+                                      obstacle[1], block_size, block_size)
             pygame.draw.rect(surface, brown, rect_object)
 
 
 levels = {"first_level": Level(10, Snake([[10, 5],
-                               [9, 5],
-                               [8, 5], [7, 5]]), []),
+                                          [9, 5],
+                                          [8, 5], [7, 5]]), []),
           "second_level": Level(25, Snake(
               [[1, 3], [1, 2], [1, 1]]), [[3, 8], [14, 4]])}
 levels_list = list(levels.keys())
@@ -149,7 +155,8 @@ class Menu:
     def __init__(self, _game):
         self.game = _game
 
-    def menu_mechanism(self, list_of_buttons, draw_menu, selected=0, state=None, condition='fail'):
+    def menu_mechanism(self, list_of_buttons, draw_menu,
+                       selected=0, state=None, condition='fail'):
         menu_exceptions = [self.draw_main_menu, self.draw_pause_menu]
         if state:
             draw_menu(list_of_buttons, state, condition, selected)
@@ -175,14 +182,15 @@ class Menu:
                         else:
                             draw_menu(selected)
                     elif event.key == pygame.locals.K_ESCAPE and \
-                            draw_menu not in menu_exceptions and draw_menu != [x for x in menu_exceptions]:
+                            draw_menu not in menu_exceptions and \
+                            draw_menu != [x for x in menu_exceptions]:
                         self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
                     elif event.key == pygame.locals.K_RETURN:
                         if list_of_buttons[selected] == TRY_AGAIN:
                             self.game.run(levels_list[state.current_level_index])
                         if list_of_buttons[selected] == NEXT_LEVEL:
                             if state.check_next_level():
-                                self.game.run(levels_list[state.current_level_index+1])
+                                self.game.run(levels_list[state.current_level_index + 1])
                             else:
                                 self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
                         if list_of_buttons[selected] == PLAY:
@@ -192,7 +200,8 @@ class Menu:
                         if list_of_buttons[selected] in levels_list:
                             self.game.run(levels_list[selected])
                         if list_of_buttons[selected] == PICK_LEVEL:
-                            self.menu_mechanism(levels_list + PICK_LEVEL_BUTTONS, self.draw_pick_level_menu)
+                            self.menu_mechanism(levels_list +
+                                                PICK_LEVEL_BUTTONS, self.draw_pick_level_menu)
                         if list_of_buttons[selected] == MAIN_MENU:
                             self.menu_mechanism(MENU_BUTTONS, self.draw_main_menu)
                         if list_of_buttons[selected] == QUIT:
@@ -204,7 +213,8 @@ class Menu:
         self.draw_general("Snake Game", MENU_BUTTONS, selected)
 
     def draw_pick_level_menu(self, selected=0):
-        self.draw_general("Выбери уровень", levels_list + PICK_LEVEL_BUTTONS, selected)
+        self.draw_general("Выбери уровень",
+                          levels_list + PICK_LEVEL_BUTTONS, selected)
 
     def draw_pause_menu(self, selected=0):
         self.draw_general("Пауза", PAUSE_BUTTONS, selected)
@@ -220,7 +230,8 @@ class Menu:
         selected_button_font = pygame.font.SysFont('arial', 45)
         for button in range(len(list_of_buttons)):
             if button == selected:
-                text = selected_button_font.render(list_of_buttons[button], True, black)
+                text = selected_button_font.render(
+                    list_of_buttons[button], True, black)
             else:
                 text = button_font.render(list_of_buttons[button], True, gray)
             text_rect = text.get_rect()
@@ -228,7 +239,8 @@ class Menu:
             self.game.surface.blit(text, text_rect)
         pygame.display.update()
 
-    def draw_condition_menu(self, list_of_buttons, state, condition, selected=0):
+    def draw_condition_menu(self, list_of_buttons,
+                            state, condition, selected=0):
         color = red if condition == 'fail' else green
         self.game.surface.fill(black)
         score_font = pygame.font.SysFont('arial', 70)
@@ -240,7 +252,8 @@ class Menu:
         selected_button_font = pygame.font.SysFont('arial', 45)
         for button in range(len(list_of_buttons)):
             if button == selected:
-                text = selected_button_font.render(list_of_buttons[button], True, white)
+                text = selected_button_font.render(
+                    list_of_buttons[button], True, white)
             else:
                 text = button_font.render(list_of_buttons[button], True, gray)
             text_rect = text.get_rect()
@@ -263,10 +276,12 @@ class Game:
 
     def __init__(self):
         pygame.init()
-        self.surface = pygame.display.set_mode((window_x, window_y + footer_size_y))
+        self.surface = pygame.display.set_mode(
+            (window_x, window_y + footer_size_y))
         self.menu = Menu(self)
 
-        self.menu.menu_mechanism(MENU_BUTTONS, self.menu.draw_main_menu)
+        self.menu.menu_mechanism(MENU_BUTTONS,
+                                 self.menu.draw_main_menu)
 
     def fail(self, state):
         fail_condition = 'fail'
@@ -288,7 +303,8 @@ class Game:
                 possible.remove(pos)
             for pos in state.objects:
                 possible.remove(pos.coords)
-            state.objects.append(Food(possible[random.randint(0, len(possible) - 1)]))
+            state.objects.append(Food(possible[random.randint(0,
+                                                              len(possible) - 1)]))
         for obj in state.objects:
             obj.draw_food(surface)
 
@@ -298,11 +314,13 @@ class Game:
         font = pygame.font.SysFont('arial', 30)
         health = font.render(f"Здоровье: {state.health}", True, black)
         health_rect = health.get_rect()
-        health_rect.midtop = (15 + health_rect.width/2, window_y + footer_size_y/2 - health_rect.height)
+        health_rect.midtop = (15 + health_rect.width / 2,
+                              window_y + footer_size_y / 2 - health_rect.height)
         self.surface.blit(health, health_rect)
         score = font.render(f"Счёт: {state.score}", True, black)
         score_rect = score.get_rect()
-        score_rect.midtop = (15 + score_rect.width/2, window_y + footer_size_y/2 + 15)
+        score_rect.midtop = (15 + score_rect.width / 2,
+                             window_y + footer_size_y / 2 + 15)
         self.surface.blit(score, score_rect)
         pygame.display.update()
 
@@ -321,7 +339,8 @@ class Game:
                     exit(0)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.locals.K_ESCAPE:
-                        self.menu.menu_mechanism(PAUSE_BUTTONS, self.menu.draw_pause_menu)
+                        self.menu.menu_mechanism(PAUSE_BUTTONS,
+                                                 self.menu.draw_pause_menu)
                     if event.key in [pygame.locals.K_LEFT, pygame.locals.K_a]:
                         change_to = LEFT
                     elif event.key in [pygame.locals.K_RIGHT, pygame.locals.K_d]:
@@ -330,14 +349,14 @@ class Game:
                         change_to = UP
                     elif event.key in [pygame.locals.K_DOWN, pygame.locals.K_s]:
                         change_to = DOWN
-                if (DIRECTION.index(change_to) + 2) % 4 != DIRECTION.index(state.snake.direction)\
+                if (DIRECTION.index(change_to) + 2) % 4 \
+                        != DIRECTION.index(state.snake.direction) \
                         and change_to != state.snake.direction:
                     state.snake.direction = change_to
 
-            # штука снизу к нынешнему положению головы прибавляет потенциальное ее перемещение
-            # и заменяет большой иф
-            state.snake.position = [x+y for x, y in zip(state.snake.position, MOVEMENT[state.snake.direction])]
-
+            state.snake.position = [x + y for x, y
+                                    in zip(state.snake.position,
+                                           MOVEMENT[state.snake.direction])]
             if state.snake.position in state.snake.coords \
                     or state.snake.position in state.current_level.obstacles:
                 state.health -= 1
@@ -351,8 +370,10 @@ class Game:
             state.current_level.draw_obstacles(self.surface)
             self.generate_objects(state, self.surface)
 
-            if state.snake.position[0] < 0 or state.snake.position[0] > window_x - block_size \
-                    or state.snake.position[1] < 0 or state.snake.position[1] > window_y - block_size:
+            if state.snake.position[0] < 0 \
+                    or state.snake.position[0] > window_x - block_size \
+                    or state.snake.position[1] < 0 \
+                    or state.snake.position[1] > window_y - block_size:
                 state.health -= 1
                 state.reset_snake()
 
